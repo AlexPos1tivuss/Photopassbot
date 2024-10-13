@@ -1,5 +1,6 @@
 import logging
 import os
+from flask import Flask
 import telebot
 from telebot import types
 import requests
@@ -557,7 +558,6 @@ def cancel_keyboard():
 def cancel_action(message):
     bot.send_message(message.chat.id, 'Операция отменена.', reply_markup=main_menu_keyboard())
 
-from flask import Flask
 app = Flask(__name__)
 
 def start_flask():
