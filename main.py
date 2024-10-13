@@ -7,9 +7,9 @@ import base64
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import io
 
-API_TOKEN = '7340640015:AAFDGkS8zMZ7lp6x_j0ssasdmqt6LgFNbBQ'
+API_TOKEN = '7663150988:AAEecipedAuXLmZdWhFEJLNlKh25wrD8kRM'
 CUTOUT_API_KEY = 'd7ef1252677441b49402f5326ce7712f'
-PAYMENT_API_KEY = '401643678:TEST:89707359-cfac-49da-b348-85de16e30c39'
+PAYMENT_API_KEY = '401643678:TEST:b6cd3f8b-8967-4916-8b3a-55c70960c07e'
 
 logging.basicConfig(level=logging.INFO)
 bot = telebot.TeleBot(API_TOKEN)
@@ -152,9 +152,42 @@ def calculate_print_size(mmHeight, mmWidth):
 
     return total_print_height, total_print_width
 
+
 @bot.message_handler(content_types=['photo'])
+def photo_buy(message):
+    global current_mode
+    bot.send_message(message.chat.id, "Оплатите, чтобы получить фото.")
+    if current_mode == 'Удаление фона':
+        bot.send_invoice(
+            message.chat.id,
+            title="Оплата за обработку фото",
+            description="Обработка фото",
+            provider_token=PAYMENT_API_KEY,
+            currency="RUB",
+            prices=[types.LabeledPrice(label="Фото без фона", amount=10000)], 
+            start_parameter="passport_photo_payment",
+            invoice_payload="passport_photo_payload"
+        )
+    else:
+        bot.send_invoice(
+            message.chat.id,
+            title="Оплата за обработку фото",
+            description="Обработка фото",
+            provider_token=PAYMENT_API_KEY,
+            currency="RUB",
+            prices=[types.LabeledPrice(label="Фото на паспорт/виза", amount=30000)], 
+            start_parameter="passport_photo_payment",
+            invoice_payload="passport_photo_payload"
+        )
+
+@bot.pre_checkout_query_handler(func=lambda _: True)
+def checkout(query):
+    bot.answer_pre_checkout_query(query.id, ok=True)
+
+@bot.message_handler(content_types=['successful_payment'])
 def handle_photo(message):
     global current_mode, selected_country, byte_im
+    logging.info(f"Платеж успешен: {message.successful_payment.total_amount / 100} {message.successful_payment.currency}")
 
     if current_mode == 'Удаление фона':
         file_info = bot.get_file(message.photo[-1].file_id)
@@ -165,7 +198,7 @@ def handle_photo(message):
             files={'file': downloaded_file},
             headers={'APIKEY': CUTOUT_API_KEY},
         )
-        bot.send_photo(message.chat.id, response.content, caption="Ваше фото с удаленным фоном.")
+        bot.send_document(message.chat.id, io.BytesIO(response.content), caption="Ваше фото с удаленным фоном.", visible_file_name="foto.png")
         bot.send_message(message.chat.id, 'Операция завершена.', reply_markup=main_menu_keyboard())
 
     elif current_mode == 'Паспорт':
@@ -329,29 +362,7 @@ def handle_photo(message):
                 final_image.save(buf, format='PNG')
                 byte_im = buf.getvalue()
                 
-                
-                img_to_blur = Image.open(io.BytesIO(byte_im))
-
-                
-                blurred_image = img_to_blur.filter(ImageFilter.GaussianBlur(radius=10))  
-
-                
-                blurred_buf = io.BytesIO()
-                blurred_image.save(blurred_buf, format='PNG')
-                blurred_buf.seek(0)  
-
-                
-                bot.send_photo(message.chat.id, blurred_buf, caption="Ваше фото готово. Оплатите, чтобы получить его.")
-                bot.send_invoice(
-                    message.chat.id,
-                    title="Оплата за обработку фото",
-                    description="Обработка фото для паспорта",
-                    provider_token=PAYMENT_API_KEY,
-                    currency="RUB",
-                    prices=[types.LabeledPrice(label="Фото на паспорт", amount=30000)], 
-                    start_parameter="passport_photo_payment",
-                    invoice_payload="passport_photo_payload"
-                )
+                bot.send_document(message.chat.id, byte_im, caption="Спасибо за покупку! Вот ваше фото.", visible_file_name="ВашеФото.jpg")
             else:
                 bot.send_message(message.chat.id, "Ошибка: не удалось получить URL фото.")
                 logging.error("API не вернул printLayoutImage.")
@@ -522,29 +533,7 @@ def handle_photo(message):
                 final_image.save(buf, format='PNG')
                 byte_im = buf.getvalue()
 
-                # Открываем изображение из байтового объекта
-                img_to_blur = Image.open(io.BytesIO(byte_im))
-
-                # Применяем размытие
-                blurred_image = img_to_blur.filter(ImageFilter.GaussianBlur(radius=10))  # Используем GaussianBlur с радиусом для сильного эффекта
-
-                # Сохраняем заблюренное изображение в новый байтовый буфер
-                blurred_buf = io.BytesIO()
-                blurred_image.save(blurred_buf, format='PNG')
-                blurred_buf.seek(0)  # Возвращаем указатель в начало буфера
-
-                # Отправляем заблюренное изображение
-                bot.send_photo(message.chat.id, blurred_buf, caption="Ваше фото готово. Оплатите, чтобы получить его.")
-                bot.send_invoice(
-                    message.chat.id,
-                    title="Оплата за обработку фото",
-                    description="Обработка фото для визы",
-                    provider_token=PAYMENT_API_KEY,
-                    currency="RUB",
-                    prices=[types.LabeledPrice(label="Фото на визу", amount=30000)],  # 300 рублей в копейках
-                    start_parameter="passport_photo_payment",
-                    invoice_payload="passport_photo_payload"
-                )
+                bot.send_document(message.chat.id, byte_im, caption="Спасибо за покупку! Вот ваше фото.", visible_file_name="ВашеФото.jpg")
             else:
                 bot.send_message(message.chat.id, "Ошибка: не удалось получить URL фото.")
                 logging.error("API не вернул printLayoutImage.")
@@ -554,16 +543,9 @@ def handle_photo(message):
     
         bot.send_message(message.chat.id, 'Операция завершена.', reply_markup=main_menu_keyboard())
 
-#оплата
 
-@bot.pre_checkout_query_handler(func=lambda query: True)
-def checkout(query):
-    bot.answer_pre_checkout_query(query.id, ok=True)
 
-@bot.message_handler(content_types=['successful_payment'])
-def handle_successful_payment(message):
-    logging.info(f"Платеж успешен: {message.successful_payment.total_amount / 100} {message.successful_payment.currency}")
-    bot.send_document(message.chat.id, byte_im, caption="Спасибо за покупку! Вот ваше фото.", visible_file_name="ВашеФото.jpg")
+
     
 
 def cancel_keyboard():
