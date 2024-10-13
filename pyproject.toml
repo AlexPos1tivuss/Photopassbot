@@ -11,6 +11,7 @@ requests = "^2.32.3"
 pytelegrambotapi = "^4.23.0"
 Pillow = "^9.2.0"
 qrcode = "^8.0"
+flask = "^3.0.3"
 
 [tool.pyright]
 # https://github.com/microsoft/pyright/blob/main/docs/configuration.md

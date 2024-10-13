@@ -557,4 +557,15 @@ def cancel_keyboard():
 def cancel_action(message):
     bot.send_message(message.chat.id, 'Операция отменена.', reply_markup=main_menu_keyboard())
 
-bot.polling(none_stop=True)
+from flask import Flask
+app = Flask(__name__)
+
+def start_flask():
+    app.run(host='0.0.0.0', port=8000, debug=False)
+
+from threading import Thread
+
+if __name__ == "__main__":
+    t = Thread(target=start_flask)
+    t.start()
+    bot.polling(none_stop=True)
